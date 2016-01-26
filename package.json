@@ -1,6 +1,6 @@
 {
   "name": "short-circuit",
-  "version": "0.0.0",
+  "version": "0.0.1-0",
   "description": "Short Circuit Flux/React Data Management",
   "main": "index.js",
   "scripts": {
