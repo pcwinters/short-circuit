@@ -1,19 +1,15 @@
 import { Component, PropTypes } from 'react';
 
-export const providerShape = {
-    getState: PropTypes.func.isRequired,
+export const providerShape = PropTypes.shape({
     subscribe: PropTypes.func.isRequired,
-    dispatch: PropTypes.func.isRequired,
     resolve: PropTypes.func.isRequired
-};
+});
 
 export default class ShortCircuitProvider extends Component {
 
     static get propTypes() {
         return {
-            getState: PropTypes.func.isRequired,
             subscribe: PropTypes.func.isRequired,
-            dispatch: PropTypes.func.isRequired,
             resolve: PropTypes.func.isRequired
         };
     }
@@ -25,11 +21,9 @@ export default class ShortCircuitProvider extends Component {
     }
 
     getChildContext(){
-        const { getState, subscribe, dispatch, resolve } = this.props;
+        const { subscribe, resolve } = this.props;
         return {
-            getState,
             subscribe,
-            dispatch,
             resolve
         };
     }

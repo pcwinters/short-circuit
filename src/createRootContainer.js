@@ -7,24 +7,20 @@ function isFunction(arg){
     return typeof arg === 'function';
 }
 
-function isUndefined(arg){
-    return typeof arg === 'undefined';
-}
-
-export const rootContainerShape = {
+export const rootContainerShape = PropTypes.shape({
     parent: PropTypes.object,
     current: PropTypes.object,
     pending: PropTypes.object,
     failed: PropTypes.object
-};
+});
 
 export default function createRootContainer(options){
     invariant(!!options, "Illegal argument, short-circuit root containers must define options");
     invariant(isFunction(options) || isFunction(options.queries), "Illegal argument, short-circuit root containers require options to be a queries function or an object with 'queries' property as a function");
-    invariant(isUndefined(options.args) || isFunction(options.args), "Illegal argument, short-circuit root containers require the optional 'args' option to be a function");
+    invariant(isFunction(options) || isFunction(options.args), "Illegal argument, short-circuit root containers require the optional 'args' option to be a function");
 
     const queriesFactory = isFunction(options) ? options : options.queries;
-    const argsFactory = isFunction(options.args) ? options.args : undefined;
+    const argsFactory = isFunction(options) ? undefined : options.args;
 
     class RootContainer extends Component {
 
@@ -35,7 +31,7 @@ export default function createRootContainer(options){
         static get contextTypes(){
             return {
                 shortCircuit: providerShape.isRequired,
-                shortCircuitRootContainer: rootContainerShape.isRequired
+                shortCircuitRootContainer: rootContainerShape // for possible parent
             };
         }
 
@@ -51,6 +47,11 @@ export default function createRootContainer(options){
                     parentContainer: this.context.shortCircuitRootContainer
                 }, this.state)
             };
+        }
+
+        constructor(){
+            super();
+            this.state = {};
         }
 
         componentWillMount(){

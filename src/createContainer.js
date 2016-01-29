@@ -1,5 +1,6 @@
 import React from 'react';
 import warning from 'warning';
+import invariant from 'invariant';
 
 import createRootContainer, { rootContainerShape } from './createRootContainer';
 
@@ -10,24 +11,32 @@ function getDisplayName(component){
 }
 
 export default function container(options){
+    invariant(options, "Illegal argument, short-circuit containers require options");
+    const renderPending = true; //options.renderPending || false;
     const RootContainer = createRootContainer(options);
     return function(TargetComponent){
         const DecoratedTarget = function(props, context){
             const shortCircuit = context.shortCircuitRootContainer;
-            const { data, args } = shortCircuit;
-            return <TargetComponent {...props} {...data} {...args} />;
+            const { current }  = shortCircuit;
+            if(!renderPending && !current.data){
+                return null;
+            }
+            const { data, args } = current;
+            return <TargetComponent {...props} {... (args || {})} {...data} />;
         };
         DecoratedTarget.contextTypes = {
             shortCircuitRootContainer: rootContainerShape.isRequired
         };
         DecoratedTarget.displayName = `shortCircuitContainer(${getDisplayName(TargetComponent)})`;
 
-        return function(props){
+        const RootContainerWithTarget = function(props){
             return (
                 <RootContainer>
                     <DecoratedTarget {...props} />
                 </RootContainer>
             );
         };
+        RootContainerWithTarget.contextTypes = RootContainer.contextTypes;
+        return RootContainerWithTarget;
     };
 }
