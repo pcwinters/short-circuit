@@ -49,9 +49,11 @@ export default function createRootContainer(options){
             };
         }
 
-        constructor(){
-            super();
+        constructor(props, context){
+            super(props, context);
+            console.log('context', context);
             this.state = {};
+            this.resolve = this.context.shortCircuit.createResolve(this);
         }
 
         componentWillMount(){
@@ -59,7 +61,10 @@ export default function createRootContainer(options){
             this.resolveQueries();
         }
 
-        componentWillUpdate(nextProps){
+        componentWillUpdate(nextProps, nextState, nextContext){
+            if (nextContext.shortCircuit.createResolve != this.context.shortCircuit.createResolve){
+                this.resolve = context.shortCircuit.createResolve(this);
+            }
             if (this.props === nextProps) { return; }
             this.resolveQueries(nextProps);
         }
@@ -89,7 +94,7 @@ export default function createRootContainer(options){
                     stale: true
                 }, this.state.current)
             });
-            const pendingPromise = shortCircuit.resolve(queries, shortCircuit);
+            const pendingPromise = this.resolve(queries, shortCircuit);
             this.pendingPromise = pendingPromise;
             pendingPromise
                 .then(data => {
