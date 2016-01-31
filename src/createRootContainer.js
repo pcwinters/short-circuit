@@ -51,7 +51,6 @@ export default function createRootContainer(options){
 
         constructor(props, context){
             super(props, context);
-            console.log('context', context);
             this.state = {};
             this.resolve = this.context.shortCircuit.createResolve(this);
         }

@@ -32,6 +32,7 @@ describe('createRootContainer', function(){
             resolve: sinon.stub(),
             subscribe: sinon.stub()
         };
+        shortCircuit.createResolve = ()=> shortCircuit.resolve;
         context = {
             shortCircuit
         };
