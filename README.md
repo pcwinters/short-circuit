@@ -1,9 +1,16 @@
 # short-circuit
-Short Circuit Flux/React Data Management
+Short circuit is a Flux/React strategy for managing data bindings to components. It helps you write *"data driven React applications"* a la Facebook's [Relay](https://facebook.github.io/relay/), but allows you to model any resolution strategy (GraphQL or otherwise). Born from ideas cemented in another library [Adrenaline](https://github.com/gyzerok/adrenaline), short-circuit aims to be extremely flexible, supporting any manner of synchronous or asynchronous API.
+
+> **NOTE** short-circuit is under development, headed towards its first release.
+
+>TodoList
+* Define a strategy for memoization of root containers
+* Fully document API
+* Tutorial, walkthrough
+
 
 ## Concepts
-* `resolve` - A strategy for resolving data for the queries declared by containers. Typically
-this will both fetch from your API and manage cache update actions.
+* `resolve()` - A strategy for resolving data for the queries declared by containers. Typically this will both fetch from your API and manage cache update actions.
 * Queries and Args - Containers define their data requirements with respect to:
   * `args(props): Object`) A transformation of props that affect changes in your container's query requirements. Args are optional, because queries can be computed directly from props. But, args will be spread as props along the same lifecycle as the data resolved for queries. In this way, you can be sure that certain props (like id's or filters) that are tightly coupled to queries are updated when the associated data is loaded.
   * `queries(args): Object`) A function that returns a anything that you know how to resolve. An example would be a map of prop/query pairs (the query schema for which should be understood by your resolve function.
@@ -18,11 +25,38 @@ Short Circuit requires a provider (usually close to the root of your application
 The provider's purpose is to expose an api to containers (_through context_), binding
 them to a store updates (redux or otherwise) and a function for resolving data queries.
 
+
+### `createContainer(options) : Function`
+An es7 compatible decorator that will wrap a target component and spread data props from a coupled root container.
+
+#### Example
+```
+import { createContainer } from 'short-circuit';
+@createContainer({
+    args: (props) => ({ todoId: props.id })
+    query: (args) => ({
+        todo: {
+            resourceType: 'todo',
+            resource: { id: args.todoId }
+        }
+    }),
+    renderPending: false
+})
+function TodoContainer(props){
+    return <div>
+        <span>{ props.todoId }: { props.todo.message }</span>
+    </div>;
+}
+
+function Application(props){
+    return (
+        <TodoContainer id={props.selectedTodoId} />
+    );
+}
+```
+
 ### `createRootContainer(options)`
-Root containers are created from specifications of data requirements and maintain
-and expose state about data fetch. They request data to be resolved using the
-adapter and store bindings made accessible to them by the Adrenaline Provider,
-and react to prop changes.
+Root containers are created from specifications of data requirements and maintain and expose state about data fetch. They request data to be resolved using the adapter and store bindings made accessible to them by the Adrenaline Provider, and react to prop changes.
 
 Options can be one of the following:
 * `function(props)` - Through which query requirements are computed directly from props.
@@ -32,78 +66,46 @@ Options can be one of the following:
   * `queries(props): Object` - The queries function.
 #
 
-### `createContainer(options) : Function`
-An es7 compatible decorator that will wrap a target component and spread data
-props from a coupled root container.
+#### Example
+Advanced example creates a root container that resolves a 'Todo' by id. A custom component receives the state via context and manages a more complex lifecycle for pending load and failure states.
+```
+import { createRootContainer, rootContainerShape } from 'short-circuit';
 
-
-## Examples
-### Resolve, Reduce, Store
-The following demonstrates how a short-circuit provider for resolving resources
-from an API by ID can be built and installed with redux.
-```js
-import { createStore, combineReducers} from 'redux';
-import { createAction, handleActions } from 'react-redux';
-import { Provider } from 'react-redux';
-import { ShortCircuitReduxProvider } from 'short-circuit';
-
-// CACHE UPDATE ACTION, REDUCER, and STORE
-const SHORT_CIRCUIT_CACHE_UPDATE_ACTION = 'SHORT_CIRCUIT_CACHE_UPDATE_ACTION';
-const shortCircuitUpdateActionCreator = createAction(SHORT_CIRCUIT_CACHE_UPDATE_ACTION);
-const shortCircuitCacheReducer = handleAction(SHORT_CIRCUIT_CACHE_UPDATE_ACTION, (state={}, action)=>{
-    const { resourceType, resource } = action.payload;
-    let resourceCache = state[resourceType] || {};
-    resourceCache = Object.assign({}, resourceCache, {
-        [resource.id]: resource
-    });
-    return Object.assign({}, state, {
-        [resourceType]: resourceCache
-    });
+const TodoRootContainer = createRootContainer({
+    args: (props) => ({ todoId: props.id })
+    query: (args) => ({
+        todo: {
+            resourceType: 'todo',
+            resource: { id: args.todoId }
+        }
+    })
 });
-const SHORT_CIRCUIT_CACHE = 'SHORT_CIRCUIT_CACHE';
-const store = createStore(combineReducers({
-  [SHORT_CIRCUIT_CACHE]: shortCircuitCacheReducer
-}));
 
-// The short-circuit resolve function
-const resourceResolver = function(queries) {
-    return new Promise((resolve, reject)=>{
-        const cache = store.getState()[SHORT_CIRCUIT_CACHE];
-        const allQueryPromises = queries.entries().map( ([prop, query])=> {
-            const isInCache = typeof (cache[query.resourceType]||{})[query.resource.id] !== 'undefined';
-            return isInCache ?
-                // cache hit
-                Promise.resolve([ prop, cache[query.resourceType][query.resource.id] ]) :
-                // api fetch and dispatch cache update before resolving
-                fetch(`/api/${query.resourceType}/${query.resource.id}`)
-                    .then((response) => response.json())
-                    .then((resource) => {
-                        shortCircuitUpdateActionCreator({
-                            resourceType,
-                            resource
-                        });
-                        return [ prop, resource ]
-                    });
-            );
-        });
-        resolve(
-            Promise.all(allQueryPromises).then((entries) => {
-                const data = {};
-                entries.forEach(([ prop, resource ]) => data[prop]=resource );
-                return data;
-            })
-        );
-    });
-};
+function Todo(props, context){
+    const shortCircuit = context.shortCircuitRootContainer;
+    // Root containers expose their state
+    const { current, failed, pending }  = shortCircuit;
 
-ReactDOM.render(
-  <Provider store={store}>
-    <ShortCircuitReduxProvider
-      subscribe={store.subscribe}
-      resolve={resourceResolver} >
-      { /* Your application */ }
-      
-    </ShortCircuitReduxProvider>
-  </Provider>
-  , document.body);
+    // Implement your own logic for managing ready and error states
+    if(failed){
+        return <div>Failed to load Todo:{ failed.args.todoId}, {failed.error}</div>
+    } else if(!current || current.stale){
+        return <div>Loading Todo:{ pending.args.todoId }...</div>;
+    } else {
+        const { args, data }  = current;
+        const { todo }  = data;
+        const { todoId } = args;
+        return <div>
+            <span>{ todoId }: { todo.message }</span>
+        </div>;
+    }
+}
+
+function Application(props){
+    return (
+        <TodoRootContainer id={props.selectedTodoId} >
+            <Todo />
+        </TodoRootContainer>
+    );
+}
 ```

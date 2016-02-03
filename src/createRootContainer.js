@@ -87,11 +87,13 @@ export default function createRootContainer(options){
             if (this.pendingPromise) {
                 this.pendingPromise.cancel = true;
             }
+            // Set to stale if we have a current state
+            const currentAfterPending = this.state.current ? Object.assign({
+                stale: true
+            }, this.state.current) : this.state.current;
             this.setState({
                 pending: { args, queries },
-                current: Object.assign({
-                    stale: true
-                }, this.state.current)
+                current: currentAfterPending
             });
             const pendingPromise = this.resolve(queries, shortCircuit);
             this.pendingPromise = pendingPromise;
@@ -111,7 +113,7 @@ export default function createRootContainer(options){
                 .catch(error => {
                     if (pendingPromise.cancel) return;
                     this.setState({
-                        pending: {},
+                        pending: null,
                         failed: {
                             args,
                             queries,

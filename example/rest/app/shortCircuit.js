@@ -93,7 +93,7 @@ const createHashedSelector = createSelectorCreator(
 );
 
 function createResolverFactory(store){
-    return function(){
+    return function resolverFactory(){
         return createHashedSelector(
             (queries) => queries,
             () => store.getState()[SHORT_CIRCUIT_CACHE],
