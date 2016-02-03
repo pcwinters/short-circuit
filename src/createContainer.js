@@ -5,21 +5,21 @@ import invariant from 'invariant';
 import createRootContainer, { rootContainerShape } from './createRootContainer';
 
 function getDisplayName(component){
-    const name = component.displayName;
+    const name = component.displayName || component.name;
     warning(name, "short-circuit container wrapped a component without a proper displayName");
-    return name || component.name;
+    return name;
 }
 
-export default function container(options){
+export default function createContainer(options){
     invariant(options, "Illegal argument, short-circuit containers require options");
-    const renderPending = true; //options.renderPending || false;
+    const renderPending = options.renderPending ? options.renderPending : false;
     const RootContainer = createRootContainer(options);
     return function(TargetComponent){
         const DecoratedTarget = function(props, context){
             const shortCircuit = context.shortCircuitRootContainer;
             const { current }  = shortCircuit;
             if(!renderPending && !current.data){
-                return null;
+                return <noscript></noscript>;
             }
             const { data, args } = current;
             return <TargetComponent {...props} {... (args || {})} {...data} />;
@@ -31,7 +31,7 @@ export default function container(options){
 
         const RootContainerWithTarget = function(props){
             return (
-                <RootContainer>
+                <RootContainer {...props}>
                     <DecoratedTarget {...props} />
                 </RootContainer>
             );

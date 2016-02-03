@@ -24,7 +24,7 @@ function withDisplayName(fn) {
     return fn;
 }
 
-describe('createRootContainer', function(){
+describe('createContainer', function(){
     let context;
     let shortCircuit;
     beforeEach(function(){

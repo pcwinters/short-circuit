@@ -2,7 +2,7 @@
   "name": "short-circuit",
   "version": "0.0.1-1",
   "description": "Short Circuit Flux/React Data Management",
-  "main": "lib/index.js",
+  "main": "src/index.js",
   "files": [
     "lib",
     "src"
@@ -11,8 +11,8 @@
     "clean": "./node_modules/.bin/rimraf lib/*",
     "lint": "./node_modules/.bin/eslint src test",
     "build:mkdir": "mkdir -p lib",
-    "watch": "npm run build:mkdir && ./node_modules/.bin/watchify -e src/index.js -o lib/index.js",
-    "build": "npm run build:mkdir && ./node_modules/.bin/browserify -e src/index.js -o lib/index.js",
+    "watch": "npm run build:mkdir && ./node_modules/.bin/watchify -x react -e src/index.js -o lib/index.js",
+    "build": "npm run build:mkdir && ./node_modules/.bin/browserify -x react -e src/index.js -o lib/index.js",
     "test": "mocha --recursive --compilers js:babel-register test",
     "test:watch": "npm test -- --watch",
     "preversion": "npm run clean && npm run lint",
@@ -77,7 +77,6 @@
   },
   "dependencies": {
     "invariant": "^2.2.0",
-    "seamless-immutable": "^5.0.1",
     "warning": "^2.1.0"
   }
 }
