@@ -18,10 +18,10 @@ export default function createContainer(options){
         const DecoratedTarget = function(props, context){
             const shortCircuit = context.shortCircuitRootContainer;
             const { current }  = shortCircuit;
-            if(!renderPending && !current.data){
+            if(!renderPending && !current){
                 return <noscript></noscript>;
             }
-            const { data, args } = current;
+            const { data, args } = current || {};
             return <TargetComponent {...props} {... (args || {})} {...data} />;
         };
         DecoratedTarget.contextTypes = {
