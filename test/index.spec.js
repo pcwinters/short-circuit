@@ -1,3 +1,5 @@
 describe('index', function(){
-    it('should export nothing at the moment');
+    it('should pass', function(){
+        
+    });
 });

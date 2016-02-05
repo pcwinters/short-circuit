@@ -1,14 +1,8 @@
-import 'babel-polyfill';
-
 import React from 'react';
-import { shallow } from 'enzyme';
 import sinon from 'sinon';
-import chai from 'chai';
-import sinonChai from 'sinon-chai';
 import Q from 'q';
 
-chai.should();
-chai.use(sinonChai);
+import { shallowRender } from 'skin-deep';
 
 import createRootContainer from '../src/createRootContainer';
 
@@ -30,7 +24,7 @@ describe('createRootContainer', function(){
         const deferred = Q.defer();
         shortCircuit.resolve.returns(deferred.promise);
         const RootContainer = createRootContainer(()=>({ myProp: 'query' }));
-        shallow(<RootContainer />, { context });
+        shallowRender(<RootContainer />, context);
         shortCircuit.resolve.should.be.calledWith({ myProp: 'query' });
     });
 
@@ -41,8 +35,8 @@ describe('createRootContainer', function(){
             args: ()=>({ myArg: 'arg' }),
             queries: ()=>({ myProp: 'query' })
         });
-        const container = shallow(<RootContainer/>, { context });
-        container.state().pending.should.eql({
+        const tree = shallowRender(<RootContainer/>, context);
+        tree.getMountedInstance().state.pending.should.eql({
             args: { myArg: 'arg' },
             queries: { myProp: 'query' }
         });
@@ -54,7 +48,7 @@ describe('createRootContainer', function(){
         const props = { someProp: 'prop' };
         shortCircuit.resolve.returns(deferred.promise);
         const RootContainer = createRootContainer(queriesStub);
-        shallow(<RootContainer {...props} />, { context });
+        shallowRender(<RootContainer {...props} />, context);
         queriesStub.should.be.calledWith(props);
     });
 
@@ -64,9 +58,9 @@ describe('createRootContainer', function(){
             args: ()=>({ myArg: 'arg' }),
             queries: ()=>({ myProp: 'query' })
         });
-        const container = shallow(<RootContainer/>, { context });
+        const tree = shallowRender(<RootContainer/>, context);
         setTimeout(()=>{
-            container.state().current.should.eql({
+            tree.getMountedInstance().state.current.should.eql({
                 data: { myProp: 1 },
                 queries: { myProp: 'query' },
                 args: { myArg: 'arg' }
