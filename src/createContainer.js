@@ -10,12 +10,32 @@ function getDisplayName(component){
     return name;
 }
 
-export default function createContainer(options){
+export function createWrapper(options){
     invariant(options, "Illegal argument, short-circuit containers require options");
-    const renderPending = options.renderPending ? options.renderPending : false;
-    const RootContainer = createRootContainer(options);
     return function(TargetComponent){
-        const DecoratedTarget = function(props, context){
+        options.target = options.target || TargetComponent;
+        const RootContainer = createRootContainer(options);
+        const RootContainerWithTarget = function(props){
+            return (
+                <RootContainer {...props}>
+                    <TargetComponent {...props} />
+                </RootContainer>
+            );
+        };
+        // Mixin context for the wrapper.
+        TargetComponent.contextTypes = Object.assign({}, TargetComponent.contextTypes, {
+            shortCircuitRootContainer: rootContainerShape.isRequired
+        });
+        RootContainerWithTarget.contextTypes = RootContainer.contextTypes;
+        return RootContainerWithTarget;
+    };
+}
+
+export default function createContainer(options){
+    const wrapper = createWrapper(options);
+    const renderPending = options.renderPending ? options.renderPending : false;
+    return function(TargetComponent){
+        function DecoratedTarget(props, context){
             const shortCircuit = context.shortCircuitRootContainer;
             const { current }  = shortCircuit;
             if(!renderPending && !current){
@@ -23,20 +43,11 @@ export default function createContainer(options){
             }
             const { data, args } = current || {};
             return <TargetComponent {...props} {... (args || {})} {...data} />;
-        };
+        }
         DecoratedTarget.contextTypes = {
             shortCircuitRootContainer: rootContainerShape.isRequired
         };
         DecoratedTarget.displayName = `shortCircuitContainer(${getDisplayName(TargetComponent)})`;
-
-        const RootContainerWithTarget = function(props){
-            return (
-                <RootContainer {...props}>
-                    <DecoratedTarget {...props} />
-                </RootContainer>
-            );
-        };
-        RootContainerWithTarget.contextTypes = RootContainer.contextTypes;
-        return RootContainerWithTarget;
+        return wrapper(DecoratedTarget);
     };
 }

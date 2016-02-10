@@ -2,7 +2,8 @@
   "name": "short-circuit",
   "version": "0.0.1-1",
   "description": "Short Circuit Flux/React Data Management",
-  "main": "src/index.js",
+  "main": "lib/index.js",
+  "browser": "src/index.js",
   "files": [
     "lib",
     "src"
@@ -81,6 +82,7 @@
     ]
   },
   "dependencies": {
+    "baconipsum": "^0.1.2",
     "invariant": "^2.2.0",
     "warning": "^2.1.0"
   }

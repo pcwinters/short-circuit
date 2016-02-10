@@ -7,6 +7,12 @@ function isFunction(arg){
     return typeof arg === 'function';
 }
 
+function isPromise(arg){
+    return arg
+        && arg.then && isFunction(arg.then)
+        && arg.catch && isFunction(arg.catch);
+}
+
 export const rootContainerShape = PropTypes.shape({
     parent: PropTypes.object,
     current: PropTypes.object,
@@ -21,25 +27,9 @@ export default function createRootContainer(options){
 
     const queriesFactory = isFunction(options) ? options : options.queries;
     const argsFactory = isFunction(options) ? undefined : options.args;
+    const target = isFunction(options) ? undefined : options.target;
 
     class RootContainer extends Component {
-
-        static get displayName(){
-            return 'shortCircuitRootContainer';
-        }
-
-        static get contextTypes(){
-            return {
-                shortCircuit: providerShape.isRequired,
-                shortCircuitRootContainer: rootContainerShape // for possible parent
-            };
-        }
-
-        static get childContextTypes(){
-            return {
-                shortCircuitRootContainer: rootContainerShape.isRequired
-            };
-        }
 
         getChildContext(){
             return {
@@ -52,7 +42,7 @@ export default function createRootContainer(options){
         constructor(props, context){
             super(props, context);
             this.state = {};
-            this.resolve = this.context.shortCircuit.createResolve(this);
+            this.resolve = this.context.shortCircuit.createResolve(target || this);
         }
 
         componentWillMount(){
@@ -62,7 +52,7 @@ export default function createRootContainer(options){
 
         componentWillUpdate(nextProps, nextState, nextContext){
             if (nextContext.shortCircuit.createResolve != this.context.shortCircuit.createResolve){
-                this.resolve = context.shortCircuit.createResolve(this);
+                this.resolve = context.shortCircuit.createResolve(target || this);
             }
             if (this.props === nextProps) { return; }
             this.resolveQueries(nextProps);
@@ -70,8 +60,6 @@ export default function createRootContainer(options){
 
         componentWillUnmount(){
             this.unsubscribe();
-            const pendingPromise = this.pendingPromise || {};
-            pendingPromise.cancel = true;
         }
 
         render(){
@@ -79,49 +67,75 @@ export default function createRootContainer(options){
         }
 
         resolveQueries(props = this.props){
-            const args = argsFactory ? argsFactory(props) : undefined;
-            const queries = queriesFactory(args ? args : props );
+            let pendingPromise = (this.pendingPromise) ? this.pendingPromise : Promise.resolve();
 
-            const shortCircuit = this.context.shortCircuit;
-            // Cancel an existing/pending promise
-            if (this.pendingPromise) {
-                this.pendingPromise.cancel = true;
-            }
-            // Set to stale if we have a current state
-            const currentAfterPending = this.state.current ? Object.assign({
-                stale: true
-            }, this.state.current) : this.state.current;
-            this.setState({
-                pending: { args, queries },
-                current: currentAfterPending
-            });
-            const pendingPromise = this.resolve(queries, shortCircuit);
-            this.pendingPromise = pendingPromise;
-            pendingPromise
-                .then(data => {
-                    if (pendingPromise.cancel) return;
-                    this.setState({
-                        current: {
-                            args,
-                            queries,
-                            data
-                        },
-                        pending: null,
-                        failed: null
-                    });
-                })
-                .catch(error => {
-                    if (pendingPromise.cancel) return;
-                    this.setState({
-                        pending: null,
-                        failed: {
-                            args,
-                            queries,
-                            error
-                        }
-                    });
+            pendingPromise = pendingPromise.then(()=>{
+                const args = argsFactory ? argsFactory(props) : undefined;
+                // Set to stale if we have a current state
+                const currentAfterPending = this.state.current ? Object.assign({
+                    stale: true
+                }, this.state.current) : this.state.current;
+                this.setState({
+                    pending: { args },
+                    current: currentAfterPending
                 });
+
+                const queriesResult = queriesFactory(args ? args : props, this.resolve );
+                const queriesPromise = isPromise(queriesResult) ? queriesResult : Promise.resolve(queriesResult);
+                return queriesPromise
+                    .then( queries => {
+                        this.setState({
+                            pending: Object.assign({}, this.state.pending, {
+                                queries
+                            })
+                        });
+                        return this.resolve(queries, args)
+                            .then(data => [data, queries]);
+                    })
+                    .then(([data, queries]) => {
+                        this.setState({
+                            current: {
+                                args,
+                                queries,
+                                data
+                            },
+                            pending: null,
+                            failed: null
+                        });
+                    })
+                    .catch(error => {
+                        this.setState({
+                            pending: null,
+                            failed: {
+                                args,
+                                error
+                            }
+                        });
+                        return Promise.reject(error);
+                    });
+            })
+            .then(
+                cleanupPromise,
+                (error) => {
+                    cleanupPromise();
+                    Promise.reject(error);
+                }
+            );
+            const cleanupPromise = () => {
+                if(this.pendingPromise === pendingPromise){
+                    this.pendingPromise = null;
+                }
+            };
+            this.pendingPromise = pendingPromise;
         }
     }
+    RootContainer.displayName = 'shortCircuitRootContainer';
+    RootContainer.contextTypes = {
+        shortCircuit: providerShape.isRequired,
+        shortCircuitRootContainer: rootContainerShape // for possible parent
+    };
+    RootContainer.childContextTypes = {
+        shortCircuitRootContainer: rootContainerShape.isRequired
+    };
     return RootContainer;
 }
