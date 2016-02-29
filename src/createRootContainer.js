@@ -20,6 +20,18 @@ export const rootContainerShape = PropTypes.shape({
     failed: PropTypes.object
 });
 
+/**
+ * Creates a pseudo-promise that will resolve immediately instead of going
+ * asynchronous. This helps to support async resolve().
+ * @param  value The value to resolve.
+ * @return {Promise} A faux promise. Implements then()
+ */
+function resolveImmediately(value){
+    return {
+        then: (callback)=>callback(value)
+    };
+}
+
 export default function createRootContainer(options){
     invariant(!!options, "Illegal argument, short-circuit root containers must define options");
     invariant(isFunction(options) || isFunction(options.queries), "Illegal argument, short-circuit root containers require options to be a queries function or an object with 'queries' property as a function");
@@ -67,7 +79,7 @@ export default function createRootContainer(options){
         }
 
         resolveQueries(props = this.props){
-            let pendingPromise = (this.pendingPromise) ? this.pendingPromise : Promise.resolve();
+            let pendingPromise = (this.pendingPromise) ? this.pendingPromise : resolveImmediately();
 
             pendingPromise = pendingPromise.then(()=>{
                 const args = argsFactory ? argsFactory(props) : undefined;
@@ -81,11 +93,12 @@ export default function createRootContainer(options){
                 });
 
                 const queriesResult = queriesFactory(args ? args : props, this.resolve );
-                const queriesPromise = isPromise(queriesResult) ? queriesResult : Promise.resolve(queriesResult);
+                const queriesPromise = isPromise(queriesResult) ? queriesResult : resolveImmediately(queriesResult);
                 return queriesPromise
                     .then( queries => {
                         this.setState({
                             pending: Object.assign({}, this.state.pending, {
+                                args,
                                 queries
                             })
                         });

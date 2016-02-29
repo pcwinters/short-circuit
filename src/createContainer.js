@@ -1,7 +1,7 @@
 import React from 'react';
 import createDecorator from './createDecorator';
 
-export const createContainer = createDecorator((TargetComponent, options)=>
+const createContainer = createDecorator((TargetComponent, options)=>
     function(props, context){
         const shortCircuit = context.shortCircuitRootContainer;
         const { current }  = shortCircuit;
@@ -12,3 +12,5 @@ export const createContainer = createDecorator((TargetComponent, options)=>
         return <TargetComponent {...props} {... (args || {})} {...data} />;
     }
 );
+
+export default createContainer;

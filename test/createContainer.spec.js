@@ -74,11 +74,11 @@ describe('createContainer', function(){
             .props.should.containSubset({ foo: 'bar' });
         deferred.resolve({ myProp: 1 });
         setTimeout(()=>{
-            findRenderedComponentWithType(tree, TargetComponent)
-                .props.should.containSubset({
-                    foo: "arg",
-                    myProp: 1
-                });
+            const target = findRenderedComponentWithType(tree, TargetComponent);
+            target.props.should.containSubset({
+                foo: "arg",
+                myProp: 1
+            });
             done();
         });
     });
