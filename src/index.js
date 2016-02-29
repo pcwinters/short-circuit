@@ -1,6 +1,7 @@
 import ShortCircuitProvider, { providerShape } from './ShortCircuitProvider';
 import createRootContainer, { rootContainerShape } from './createRootContainer';
-import createContainer, { createWrapper } from './createContainer';
+import createContainer from './createContainer';
+import createDecorator from './createDecorator';
 
 export {
     ShortCircuitProvider,
@@ -8,5 +9,5 @@ export {
     createRootContainer,
     rootContainerShape,
     createContainer,
-    createWrapper
+    createDecorator
 };

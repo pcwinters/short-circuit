@@ -66,6 +66,9 @@ Options can be one of the following:
   * `queries(props): Object` - The queries function.
 #
 
+### `createDecorator(decoratorFactory)`
+*TODO*
+
 #### Example
 Advanced example creates a root container that resolves a 'Todo' by id. A custom component receives the state via context and manages a more complex lifecycle for pending load and failure states.
 ```
