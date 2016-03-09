@@ -2,6 +2,7 @@ import invariant from 'invariant';
 import { Component, PropTypes } from 'react';
 
 import { providerShape } from './ShortCircuitProvider';
+import * as ReadyState from './ReadyState';
 
 function isFunction(arg){
     return typeof arg === 'function';
@@ -14,6 +15,7 @@ function isPromise(arg){
 }
 
 export const rootContainerShape = PropTypes.shape({
+    readyState: PropTypes.string, // TODO oneOf
     parent: PropTypes.object,
     current: PropTypes.object,
     pending: PropTypes.object,
@@ -39,6 +41,7 @@ export default function createRootContainer(options){
 
     const queriesFactory = isFunction(options) ? options : options.queries;
     const argsFactory = isFunction(options) ? undefined : options.args;
+    // FIXME doc this. Used for createResolve!!
     const target = isFunction(options) ? undefined : options.target;
 
     class RootContainer extends Component {
@@ -53,7 +56,9 @@ export default function createRootContainer(options){
 
         constructor(props, context){
             super(props, context);
-            this.state = {};
+            this.state = {
+                readyState: ReadyState.INITIAL_LOADING
+            };
             this.resolve = this.context.shortCircuit.createResolve(target || this);
         }
 
@@ -83,13 +88,10 @@ export default function createRootContainer(options){
 
             pendingPromise = pendingPromise.then(()=>{
                 const args = argsFactory ? argsFactory(props) : undefined;
-                // Set to stale if we have a current state
-                const currentAfterPending = this.state.current ? Object.assign({
-                    stale: true
-                }, this.state.current) : this.state.current;
+
                 this.setState({
-                    pending: { args },
-                    current: currentAfterPending
+                    readyState: ReadyState.hasLoaded(this.state.readyState) ? ReadyState.LOADING : ReadyState.INITIAL_LOADING,
+                    pending: { args }
                 });
 
                 const queriesResult = queriesFactory(args ? args : props, this.resolve );
@@ -107,6 +109,7 @@ export default function createRootContainer(options){
                     })
                     .then(([data, queries]) => {
                         this.setState({
+                            readyState: ReadyState.LOADED,
                             current: {
                                 args,
                                 queries,
@@ -118,6 +121,7 @@ export default function createRootContainer(options){
                     })
                     .catch(error => {
                         this.setState({
+                            readyState: ReadyState.hasLoaded(this.state.readyState) ? ReadyState.ERROR : ReadyState.INITIAL_ERROR,
                             pending: null,
                             failed: {
                                 args,
