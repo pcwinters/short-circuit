@@ -81,8 +81,10 @@
       ]
     ]
   },
+  "devDependencies": {
+    "baconipsum": "^0.1.2"
+  },
   "dependencies": {
-    "baconipsum": "^0.1.2",
     "invariant": "^2.2.0",
     "warning": "^2.1.0"
   }
